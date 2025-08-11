@@ -3,11 +3,15 @@ const express = require("express")
 const cors = require("cors")
 const path = require("path")
 const connectDB = require("./config/db")
+const morgan = require("morgan")
 const authRoutes = require("./routes/authRoutes")
+const userRoutes = require("./routes/userRoutes")
+const taskRoutes = require("./routes/taskRoutes")
+const reportRoutes = require("./routes/reportRoutes")
 
 const app = express()
+const PORT = process.env.PORT || 8000
 
-/* MIDDLEWARE */
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "*",
@@ -16,17 +20,23 @@ app.use(
   })
 )
 app.use(express.json())
+app.use(morgan("dev"))
 
-/* ROUTES */
 app.use("/api/auth", authRoutes)
-/* app.use("/api/users", userRoutes)
+app.use("/api/users", userRoutes)
+app.use("/api/tasks", taskRoutes)
 app.use("/api/reports", reportRoutes)
-app.use("/api/tasks", taskRoutes) */
 
-/* CONNECT DB */
-connectDB()
+app.all("*", (req, res) => {
+  res.status(404)
 
-/* SERVER */
-const PORT = process.env.PORT || 8000
+  if (req.accepts("json")) {
+    res.json({ message: "404 Not Found" })
+  } else {
+    res.type("txt").send("404 Not Found")
+  }
+})
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+connectDB().then(() => {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+})
