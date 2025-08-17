@@ -1,4 +1,5 @@
 import { useContext } from "react"
+import { Toaster } from "react-hot-toast"
 import {
   Navigate,
   Outlet,
@@ -8,7 +9,7 @@ import {
 } from "react-router-dom"
 import UserProvider, { UserContext } from "./context/UserContext"
 import CreateTask from "./pages/admin/CreateTask"
-import { default as Dashboard } from "./pages/admin/Dashboard"
+import Dashboard from "./pages/admin/Dashboard"
 import ManageTasks from "./pages/admin/ManageTasks"
 import ManageUsers from "./pages/admin/ManageUsers"
 import Login from "./pages/auth/Login"
@@ -26,7 +27,11 @@ const Root = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    if (location.pathname !== "/login" && location.pathname !== "/signup") {
+      return <Navigate to="/login" replace />
+    }
+
+    return <Outlet />
   }
 
   return user.role === "Admin" ? (
@@ -72,6 +77,12 @@ const App = () => {
           </Routes>
         </Router>
       </div>
+      <Toaster
+        toastOptions={{
+          style: { fontSize: "13px" },
+          className: "",
+        }}
+      />
     </UserProvider>
   )
 }

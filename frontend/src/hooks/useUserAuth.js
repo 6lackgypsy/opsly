@@ -2,7 +2,7 @@ import { useContext, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { UserContext } from "../context/UserContext"
 
-const useUserAuth = () => {
+export const useUserAuth = () => {
   const navigate = useNavigate()
 
   const { loading, user, clearUser } = useContext(UserContext)
