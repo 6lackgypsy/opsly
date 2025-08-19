@@ -1,19 +1,21 @@
-import { useState } from "react"
+import moment from "moment"
+import { useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
 import { LuTrash2 } from "react-icons/lu"
 import { useLocation, useNavigate } from "react-router-dom"
+import DeleteAlert from "../../components/DeleteAlert"
 import AddAttachmentInput from "../../components/input/AddAttachmentInput"
 import SelectDropdown from "../../components/input/SelectDropdown"
 import SelectUsers from "../../components/input/SelectUsers"
 import TodoListInput from "../../components/input/TodoListInput"
 import DashboardLayout from "../../components/layout/DashboardLayout"
+import Modal from "../../components/Modal"
 import { API_PATHS } from "../../utils/apiPaths"
 import axiosInstance from "../../utils/axiosInstance"
 import { PRIORITY_DATA } from "../../utils/data"
 
 const CreateTask = () => {
-  const { navigate } = useNavigate()
-
+  const navigate = useNavigate()
   const location = useLocation()
   const { taskId } = location.state || {}
 
@@ -30,6 +32,41 @@ const CreateTask = () => {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false)
+
+  useEffect(() => {
+    if (taskId) {
+      getTaskDetails(taskId)
+    }
+
+    return () => {}
+  }, [taskId])
+
+  const getTaskDetails = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.TASKS.GET_TASK(taskId))
+
+      if (response.data) {
+        const taskInfo = response.data
+
+        setCurrentTask(taskInfo)
+        setTaskData((prev) => ({
+          title: taskInfo.title,
+          description: taskInfo.description,
+          priority: taskInfo.priority,
+          dueDate: taskInfo.dueDate
+            ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+            : null,
+          assignedTo: taskInfo?.assignedTo?.map((item) => item?._id || []),
+          todoChecklist: taskInfo?.todoChecklist?.map(
+            (item) => item?.text || [],
+          ),
+          attachments: taskInfo?.attachments || [],
+        }))
+      }
+    } catch (error) {
+      console.error("Error fetching user", error)
+    }
+  }
 
   const handleValueChange = (key, value) => {
     setTaskData((prevData) => ({ ...prevData, [key]: value }))
@@ -71,7 +108,36 @@ const CreateTask = () => {
     }
   }
 
-  const updateTask = async () => {}
+  const updateTask = async () => {
+    setLoading(true)
+
+    try {
+      const todoList = taskData.todoChecklist?.map((item) => {
+        const prevTodoChecklist = currentTask?.todoChecklist || []
+        const matchedTask = prevTodoChecklist.find((task) => task.text === item)
+
+        return {
+          text: item,
+          completed: matchedTask ? matchedTask.completed : false,
+        }
+      })
+
+      const response = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK(taskId),
+        {
+          ...taskData,
+          dueDate: new Date(taskData.dueDate).toISOString(),
+          todoChecklist: todoList,
+        },
+      )
+
+      toast.success("Task updated successfully")
+    } catch (error) {
+      console.error("Error updating task", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -114,9 +180,20 @@ const CreateTask = () => {
     createTask()
   }
 
-  const getTaskDetails = async () => {}
+  const deleteTask = async () => {
+    try {
+      await axiosInstance.delete(API_PATHS.TASKS.DELETE_TASK(taskId))
 
-  const deleteTask = async () => {}
+      setOpenDeleteAlert(false)
+      toast.success("Task deleted Successfully")
+      navigate("/admin/tasks")
+    } catch (error) {
+      console.error(
+        "Error deleting task",
+        error.response?.data.message || error.message,
+      )
+    }
+  }
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -239,6 +316,16 @@ const CreateTask = () => {
           </div>
         </div>
       </div>
+      <Modal
+        isOpen={openDeleteAlert}
+        onClose={() => setOpenDeleteAlert(false)}
+        title="Delete Task"
+      >
+        <DeleteAlert
+          content="Are you sure you want to delete this task?"
+          onDelete={deleteTask}
+        />
+      </Modal>
     </DashboardLayout>
   )
 }
